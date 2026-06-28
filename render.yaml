@@ -2,7 +2,7 @@ services:
   - type: web
     name: bus-tracking-system
     runtime: php
-    repo: https://github.com/Innocentodev/bus-tracking-system
+    repo: https://github.com/ITinnocento-max/bus-tracking-system
     plan: free
     region: oregon
     buildCommand: composer install --no-dev --optimize-autoloader
