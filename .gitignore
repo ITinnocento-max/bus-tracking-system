@@ -1,0 +1,48 @@
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini
+NUL
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Deploy helpers (local dev files)
+deploy_helpers.html
+upload_deploy.php
+upload_deploy2.php
+auto_deploy.php
+helpers_b64.txt
+helpers_inline.php
+helpers_inline2.php
+index_b64.txt
+index_compact.php
+index_mini.php
+index_simple.php
+index_test.php
+index_v2.php
+debug_test.php
+phpinfo_test.php
+fix_site.php
+extract_helpers.php
+simple_test.php
+test_debug.php
+test_icon.php
+test_minimal.php
+verify_site.php
+write_index.php
+seed_admin.php
+deploy.php
+cookies.txt

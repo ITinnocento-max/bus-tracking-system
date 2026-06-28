@@ -1,0 +1,254 @@
+<?php session_start(); require_once __DIR__ . '/config/helpers.php'; ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book a Seat - Smart Bus Tracking</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<nav>
+    <a href="index.php" class="nav-brand"><?= icon('bus') ?> SmartBus Tracker</a>
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links" id="navLinks">
+        <a href="index.php">Live Tracking</a>
+        <a href="booking.php" class="active">Book Seat</a>
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <a href="my_bookings.php">My Bookings</a>
+            <?php if ($_SESSION['role'] === 'admin'): ?>
+                <a href="dashboard/index.php">Admin</a>
+            <?php endif; ?>
+            <div class="nav-user">
+                <span><?= icon('user') ?> <?= htmlspecialchars($_SESSION['full_name']) ?></span>
+                <a href="auth/logout.php" class="btn btn-sm btn-primary">Logout</a>
+            </div>
+        <?php else: ?>
+            <div class="nav-user">
+                <a href="auth/login.php" class="btn btn-sm btn-primary">Login</a>
+            </div>
+        <?php endif; ?>
+    </div>
+</nav>
+
+<div class="container">
+    <div style="max-width:800px;margin:0 auto;">
+        <div class="card">
+            <div class="card-header">
+                <h2><?= icon('ticket') ?> Book a Seat</h2>
+            </div>
+
+            <?php if (!isset($_SESSION['user_id'])): ?>
+                <div class="message" style="display:block;background:#fff8e1;color:#f57f17;border:1px solid #ffe082;text-align:center;">
+                    Please <a href="auth/login.php" style="font-weight:700;">login</a> or <a href="auth/register.php" style="font-weight:700;">register</a> to book a seat.
+                </div>
+            <?php else: ?>
+                <div class="booking-steps">
+                    <div class="step active" id="step1">1. Select Bus</div>
+                    <div class="step" id="step2">2. Choose Seat</div>
+                    <div class="step" id="step3">3. Confirm</div>
+                </div>
+
+                <div id="step1Content">
+                    <div class="form-group">
+                        <label>Select Bus</label>
+                        <select id="bookBusSelector" class="bus-selector">
+                            <option value="">Loading buses...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="step2Content" style="display:none;">
+                    <div id="selectedBusInfo" class="bus-info-card"></div>
+                    <p style="margin-bottom:12px;font-size:0.875rem;color:var(--gray-500);">
+                        <?= icon('lightbulb') ?> Green seats are available. Click to select.
+                    </p>
+                    <div id="bookSeatGrid" class="seat-grid" style="margin-bottom:20px;"></div>
+                    <div style="text-align:center;">
+                        <p style="margin-bottom:8px;">Selected: <strong id="selectedSeatDisplay">-</strong></p>
+                        <button id="confirmBookingBtn" class="btn btn-primary" disabled>Confirm Booking</button>
+                    </div>
+                </div>
+
+                <div id="step3Content" style="display:none;">
+                    <div id="bookingResult" class="text-center"></div>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<?php if (isset($_SESSION['user_id'])): ?>
+<script>
+function esc(str) { return String(str).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];}); }
+
+let selectedSeat = null;
+let selectedBusCode = '';
+
+async function loadBuses() {
+    try {
+        const res = await fetch('api/get_buses.php');
+        const data = await res.json();
+        const selector = document.getElementById('bookBusSelector');
+        if (data.status === 'success' && data.data.length > 0) {
+            selector.innerHTML = '<option value="">Choose a bus route...</option>';
+            data.data.forEach(bus => {
+                const opt = document.createElement('option');
+                opt.value = bus.bus_code;
+                opt.textContent = `${bus.bus_code} - ${bus.bus_name} (${bus.total_seats} seats)`;
+                selector.appendChild(opt);
+            });
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function loadSeatsForBooking(busCode) {
+    try {
+        const res = await fetch(`api/get_seats.php?bus_code=${busCode}`);
+        const data = await res.json();
+        if (data.status === 'success') {
+            const grid = document.getElementById('bookSeatGrid');
+            grid.innerHTML = '';
+
+            const busRes = await fetch(`api/get_bus_location.php?bus_code=${busCode}`);
+            const busData = await busRes.json();
+            if (busData.status === 'success') {
+                document.getElementById('selectedBusInfo').innerHTML = `
+                    <div class="bus-icon"><img src="assets/icons/bus.svg" class="icon-xl"></div>
+                    <div class="bus-details">
+                        <h3>${esc(busData.data.bus_code)} - ${esc(busData.data.bus_name)}</h3>
+                        <p><span class="badge badge-success">Active</span></p>
+                    </div>
+                `;
+            }
+
+            const icons = { available: 'seat.svg', occupied: 'person.svg', booked: 'lock.svg' };
+            data.data.forEach(seat => {
+                const div = document.createElement('div');
+                div.className = `seat ${seat.status}`;
+                const img = document.createElement('img');
+                img.className = 'seat-icon';
+                img.src = `assets/icons/${icons[seat.status] || 'seat.svg'}`;
+                img.alt = seat.status;
+                div.appendChild(img);
+                const span = document.createElement('span');
+                span.textContent = seat.seat_number;
+                div.appendChild(span);
+                div.dataset.seatNumber = seat.seat_number;
+
+                if (seat.status === 'available') {
+                    div.style.cursor = 'pointer';
+                    div.addEventListener('click', function() {
+                        document.querySelectorAll('#bookSeatGrid .seat.available').forEach(s => {
+                            s.style.outline = 'none';
+                            s.style.outlineOffset = '0';
+                        });
+                        this.style.outline = '3px solid var(--primary)';
+                        this.style.outlineOffset = '2px';
+                        selectedSeat = this.dataset.seatNumber;
+                        document.getElementById('selectedSeatDisplay').textContent = selectedSeat;
+                        document.getElementById('confirmBookingBtn').disabled = false;
+                    });
+                }
+
+                grid.appendChild(div);
+            });
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+document.getElementById('bookBusSelector').addEventListener('change', function() {
+    selectedBusCode = this.value;
+    selectedSeat = null;
+    document.getElementById('selectedSeatDisplay').textContent = '-';
+    document.getElementById('confirmBookingBtn').disabled = true;
+
+    if (selectedBusCode) {
+        document.getElementById('step1').classList.remove('active');
+        document.getElementById('step1').classList.add('completed');
+        document.getElementById('step2').classList.add('active');
+        document.getElementById('step1Content').style.display = 'none';
+        document.getElementById('step2Content').style.display = 'block';
+        loadSeatsForBooking(selectedBusCode);
+    }
+});
+
+document.getElementById('confirmBookingBtn').addEventListener('click', async function() {
+    if (!selectedSeat || !selectedBusCode) return;
+
+    if (!confirm(`Book ${selectedBusCode} - Seat ${selectedSeat}?`)) return;
+
+    this.disabled = true;
+    this.textContent = 'Booking...';
+
+    try {
+        const res = await fetch('api/book_seat.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bus_code: selectedBusCode, seat_number: selectedSeat })
+        });
+        const result = await res.json();
+
+        document.getElementById('step2').classList.remove('active');
+        document.getElementById('step2').classList.add('completed');
+        document.getElementById('step3').classList.add('active');
+        document.getElementById('step2Content').style.display = 'none';
+        document.getElementById('step3Content').style.display = 'block';
+
+        const resultDiv = document.getElementById('bookingResult');
+        if (result.status === 'success') {
+            resultDiv.innerHTML = `
+                <div style="margin-bottom:16px;"><img src="assets/icons/check.svg" class="icon-xl"></div>
+                <h3 style="margin-bottom:8px;">Booking Successful!</h3>
+                <p style="color:var(--gray-500);margin-bottom:20px;">${esc(result.message)}</p>
+                <div class="bus-info-card" style="justify-content:center;">
+                    <div><img src="assets/icons/bus.svg" class="icon" style="vertical-align:middle;"> ${esc(selectedBusCode)}</div>
+                    <div><img src="assets/icons/seat.svg" class="icon" style="vertical-align:middle;"> Seat ${esc(selectedSeat)}</div>
+                    <div><img src="assets/icons/ticket.svg" class="icon" style="vertical-align:middle;"> #${esc(result.booking_id)}</div>
+                </div>
+                <div style="margin-top:20px;">
+                    <a href="my_bookings.php" class="btn btn-primary">View My Bookings</a>
+                    <a href="booking.php" class="btn" style="background:var(--gray-100);margin-left:8px;">Book Another</a>
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div style="margin-bottom:16px;"><img src="assets/icons/x.svg" class="icon-xl"></div>
+                <h3 style="margin-bottom:8px;">Booking Failed</h3>
+                <p style="color:var(--gray-500);">${esc(result.message)}</p>
+                <div style="margin-top:20px;">
+                    <button onclick="location.reload()" class="btn btn-primary">Try Again</button>
+                </div>
+            `;
+        }
+    } catch (err) {
+        alert('Network error');
+        this.disabled = false;
+        this.textContent = 'Confirm Booking';
+    }
+});
+
+loadBuses();
+</script>
+<?php endif; ?>
+<script>
+document.getElementById('hamburger')?.addEventListener('click', function() {
+    this.classList.toggle('active');
+    document.getElementById('navLinks').classList.toggle('open');
+});
+document.addEventListener('click', function(e) {
+    const nav = document.querySelector('nav');
+    if (!nav.contains(e.target)) {
+        document.getElementById('hamburger')?.classList.remove('active');
+        document.getElementById('navLinks')?.classList.remove('open');
+    }
+});
+</script>
+</body>
+</html>

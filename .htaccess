@@ -1,0 +1,43 @@
+# Force HTTPS (works on Apache & LiteSpeed/InfinityFree)
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+</IfModule>
+
+# SVG — force correct MIME type (Apache & LiteSpeed/InfinityFree)
+AddType image/svg+xml .svg
+<FilesMatch "\.svg$">
+    <IfModule mod_headers.c>
+        Header always set Content-Type "image/svg+xml"
+        Header always set Cache-Control "no-cache, must-revalidate"
+    </IfModule>
+</FilesMatch>
+
+# Hide PHP version
+<IfModule mod_php.c>
+    php_flag expose_php Off
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "\.(sql|md|log|env|ini)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Deny access to dot files
+<FilesMatch "^\.">
+    Order deny,allow
+    Deny from all
+</FilesMatch>

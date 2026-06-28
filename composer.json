@@ -1,0 +1,13 @@
+{
+    "name": "innocentodev/bus-tracking-system",
+    "description": "Smart Multi-Bus IoT Tracking & Ticketing System",
+    "type": "project",
+    "require": {
+        "php": ">=8.0"
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "echo 'Bus Tracking System deployed successfully'"
+        ]
+    }
+}
