@@ -51,16 +51,14 @@ String APN = "internet";
                     SERVER ENDPOINTS
 ********************************************************************/
 
-// Change IP to your computer's local network IP (run: ipconfig)
-// Port 8080 = PHP dev server (no subdirectory path needed)
-// Port 80   = XAMPP Apache (use /IOT_BUS_TRACKING_SYSTEM/ prefix)
+// Render deployment URL (HTTP only — SIM900 does not support HTTPS)
+// NOTE: Render redirects HTTP → HTTPS; see HTTPS workaround notes below.
 
-String SERVER_IP  = "172.22.203.173";
-String SERVER_PORT = "8080";  // 8080=PHP dev, 80=XAMPP Apache
+String SERVER = "bus-tracking-system.onrender.com";
 
-String URL_UPDATE  = "http://" + SERVER_IP + ":" + SERVER_PORT + "/api/update.php";
-String URL_SMS     = "http://" + SERVER_IP + ":" + SERVER_PORT + "/api/get_pending_sms.php";
-String URL_CONFIRM = "http://" + SERVER_IP + ":" + SERVER_PORT + "/api/confirm_sms.php";
+String URL_UPDATE  = "http://" + SERVER + "/api/update.php";
+String URL_SMS     = "http://" + SERVER + "/api/get_pending_sms.php";
+String URL_CONFIRM = "http://" + SERVER + "/api/confirm_sms.php";
 
 /********************************************************************
                     GLOBAL VARIABLES
