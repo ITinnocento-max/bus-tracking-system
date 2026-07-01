@@ -94,6 +94,7 @@ void setup()
     initSIM900();
 
     Serial.println("SYSTEM READY");
+    Serial.println("[GPS] Waiting for satellite fix (may take 5-15 min on cold start)...");
 }
 
 /********************************************************************
@@ -121,6 +122,8 @@ void loop()
                     GPS HANDLER
 ********************************************************************/
 
+unsigned long lastGpsDebug = 0;
+
 void readGPS()
 {
     while (gpsSerial.available()) {
@@ -130,6 +133,25 @@ void readGPS()
     if (gps.location.isValid()) {
         lat = String(gps.location.lat(), 6);
         lng = String(gps.location.lng(), 6);
+    } else {
+        // Print GPS status every 10s when no fix
+        if (millis() - lastGpsDebug > 10000) {
+            lastGpsDebug = millis();
+            Serial.print("[GPS] No fix. Satellites: ");
+            Serial.print(gps.satellites.value());
+            Serial.print(" | Chars processed: ");
+            Serial.print(gps.charsProcessed());
+            Serial.print(" | Sentenced: ");
+            Serial.print(gps.sentencesWithFix());
+            Serial.print(" | HDOP: ");
+            Serial.println(gps.hdop.value());
+        }
+    }
+
+    // Cold-start hint after 30s of no data
+    if (gps.charsProcessed() < 10 && millis() > 35000) {
+        Serial.println("[GPS] No NMEA data received. Check wiring: GPS TX → ESP32 GPIO16 (RX)");
+        delay(5000); // prevent spam
     }
 }
 
