@@ -350,20 +350,121 @@ async function bookSeat(busCode, seatNumber) {
 }
 
 document.getElementById('busSelector').addEventListener('change', function() {
+    // Reset previous selected bus marker to normal size
+    for (const code in markers) {
+        markers[code].setIcon(createBusMarkerIcon(code));
+        markers[code].setZIndex(100);
+    }
     currentBusCode = this.value;
-    loadSeats(currentBusCode);
+    if (currentBusCode) {
+        document.getElementById('seatCard').style.display = 'block';
+        loadSeats(currentBusCode);
+    } else {
+        document.getElementById('seatCard').style.display = 'none';
+        document.getElementById('busInfoCard').style.display = 'none';
+    }
 });
+
+let selectedBusMarker = null;
+let selectedBusInfoWindow = null;
+
+async function refreshSelectedBus() {
+    if (!currentBusCode) return;
+
+    try {
+        const [busRes, seatsRes] = await Promise.all([
+            fetch(`api/get_bus_location.php?bus_code=${currentBusCode}`),
+            fetch(`api/get_seats.php?bus_code=${currentBusCode}`)
+        ]);
+        const busData = await busRes.json();
+        const seatsData = await seatsRes.json();
+
+        if (busData.status === 'success') {
+            const bus = busData.data;
+            const lat = parseFloat(bus.current_lat);
+            const lng = parseFloat(bus.current_lng);
+
+            document.getElementById('busName').textContent = `${bus.bus_code} - ${bus.bus_name}`;
+            document.getElementById('lastUpdate').textContent = bus.last_update || 'Just now';
+
+            if (lat && lng) {
+                // Smooth-follow: animate map center to selected bus
+                const currentCenter = map.getCenter();
+                const target = { lat, lng };
+                const stepLat = (target.lat - currentCenter.lat()) * 0.15;
+                const stepLng = (target.lng - currentCenter.lng()) * 0.15;
+                map.setCenter({
+                    lat: currentCenter.lat() + stepLat,
+                    lng: currentCenter.lng() + stepLng
+                });
+                map.setZoom(16);
+
+                // Highlight selected bus marker
+                if (markers[currentBusCode]) {
+                    markers[currentBusCode].setIcon({
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 18,
+                        fillColor: getBusColor(currentBusCode),
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 4,
+                        labelOrigin: new google.maps.Point(0, 4)
+                    });
+                    markers[currentBusCode].setZIndex(999);
+                }
+            }
+        }
+
+        if (seatsData.status === 'success') {
+            const seats = seatsData.data;
+            const grid = document.getElementById('seatGrid');
+            const total = seats.length;
+            const available = seats.filter(s => s.status === 'available').length;
+            document.getElementById('seatCount').textContent = `${available}/${total} Free`;
+
+            grid.innerHTML = '';
+            const colMap = { A1: 1, A2: 4, A3: 1, A4: 4 };
+            const rowMap = { A1: 1, A2: 1, A3: 2, A4: 2 };
+            const icons = { available: 'seat.svg', occupied: 'person.svg', booked: 'lock.svg' };
+            seats.forEach(seat => {
+                const div = document.createElement('div');
+                div.className = `seat ${seat.status}`;
+                div.style.gridColumn = colMap[seat.seat_number] || '1';
+                div.style.gridRow = rowMap[seat.seat_number] || '1';
+                const img = document.createElement('img');
+                img.className = 'seat-icon';
+                img.src = `assets/icons/${icons[seat.status] || 'seat.svg'}`;
+                img.alt = seat.status;
+                div.appendChild(img);
+                const span = document.createElement('span');
+                span.textContent = seat.seat_number;
+                div.appendChild(span);
+                div.dataset.seatNumber = seat.seat_number;
+                div.dataset.status = seat.status;
+
+                if (seat.status === 'available') {
+                    div.addEventListener('click', () => {
+                        if (<?= isset($_SESSION['user_id']) ? 'true' : 'false' ?>) {
+                            bookSeat(currentBusCode, seat.seat_number);
+                        } else {
+                            alert('Please login to book a seat');
+                            window.location.href = 'auth/login.php';
+                        }
+                    });
+                }
+
+                grid.appendChild(div);
+            });
+        }
+    } catch (err) {
+        console.error('Refresh error:', err);
+    }
+}
 
 setInterval(async () => {
     await loadBuses();
-    if (currentBusCode) {
-        const busRes = await fetch(`api/get_bus_location.php?bus_code=${currentBusCode}`);
-        const busData = await busRes.json();
-        if (busData.status === 'success' && parseFloat(busData.data.current_lat)) {
-            document.getElementById('lastUpdate').textContent = busData.data.last_update || 'Just now';
-        }
-    }
-}, 4000);
+    await refreshSelectedBus();
+}, 3000);
 </script>
 <script>
 document.getElementById('hamburger')?.addEventListener('click', function() {
