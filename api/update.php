@@ -38,7 +38,8 @@ try {
         $stmt->execute([$lat, $lng, $bus_id]);
     }
 
-    // Update seats — map digital values (0/1) to LOW/HIGH
+    // Update seats — map digital values (0/1) to sensor status
+    // IR sensors are active-low: 0 = person detected (occupied), 1 = empty (available)
     $seatMap = [
         's1' => ['num' => 'A1', 'val' => $s1],
         's2' => ['num' => 'A2', 'val' => $s2],
@@ -55,7 +56,8 @@ try {
 
     foreach ($seatMap as $key => $seat) {
         if ($seat['val'] !== null) {
-            $sensorStatus = ($seat['val'] == 1) ? 'HIGH' : 'LOW';
+            // 0 = LOW signal = person detected = occupied
+            $sensorStatus = ($seat['val'] == 0) ? 'HIGH' : 'LOW';
             $stmt->execute([$sensorStatus, $sensorStatus, $bus_id, $seat['num']]);
         }
     }

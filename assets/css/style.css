@@ -200,13 +200,44 @@ nav {
     outline: none;
 }
 
-/* Seat Grid */
+/* Seat Grid — Bus layout 2+2 with aisle */
 .seat-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    max-width: 280px;
+    grid-template-columns: 1fr 1fr 30px 1fr 1fr;
+    gap: 6px;
+    max-width: 320px;
     margin: 0 auto;
+    padding: 16px 12px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #dee2e6;
+    position: relative;
+}
+
+.seat-grid::before {
+    content: 'FRONT';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #f8f9fa;
+    padding: 0 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #9aa0a6;
+    letter-spacing: 1px;
+}
+
+.seat-grid::after {
+    content: '';
+    position: absolute;
+    top: 16px;
+    bottom: 16px;
+    left: calc(50% - 1px);
+    width: 2px;
+    background: #dee2e6;
+    border-left: 1px dashed #ced4da;
+    border-right: 1px dashed #ced4da;
 }
 
 .seat {
@@ -227,8 +258,8 @@ nav {
 }
 
 .seat-icon {
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
     display: block;
 }
 

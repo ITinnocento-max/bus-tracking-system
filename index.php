@@ -287,10 +287,14 @@ async function loadSeats(busCode) {
             document.getElementById('seatCount').textContent = `${available}/${total} Free`;
 
             grid.innerHTML = '';
+            const colMap = { A1: 1, A2: 4, A3: 1, A4: 4 };
+            const rowMap = { A1: 1, A2: 1, A3: 2, A4: 2 };
             const icons = { available: 'seat.svg', occupied: 'person.svg', booked: 'lock.svg' };
             seats.forEach(seat => {
                 const div = document.createElement('div');
                 div.className = `seat ${seat.status}`;
+                div.style.gridColumn = colMap[seat.seat_number] || '1';
+                div.style.gridRow = rowMap[seat.seat_number] || '1';
                 const img = document.createElement('img');
                 img.className = 'seat-icon';
                 img.src = `assets/icons/${icons[seat.status] || 'seat.svg'}`;
