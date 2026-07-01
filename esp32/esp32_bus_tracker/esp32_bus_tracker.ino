@@ -51,9 +51,16 @@ String APN = "internet";
                     SERVER ENDPOINTS
 ********************************************************************/
 
-String URL_UPDATE  = "http://bustracking.kesug.com/api/update.php";
-String URL_SMS     = "http://bustracking.kesug.com/api/get_pending_sms.php";
-String URL_CONFIRM = "http://bustracking.kesug.com/api/confirm_sms.php";
+// Change IP to your computer's local network IP (run: ipconfig)
+// Port 8080 = PHP dev server (no subdirectory path needed)
+// Port 80   = XAMPP Apache (use /IOT_BUS_TRACKING_SYSTEM/ prefix)
+
+String SERVER_IP  = "172.22.203.173";
+String SERVER_PORT = "8080";  // 8080=PHP dev, 80=XAMPP Apache
+
+String URL_UPDATE  = "http://" + SERVER_IP + ":" + SERVER_PORT + "/api/update.php";
+String URL_SMS     = "http://" + SERVER_IP + ":" + SERVER_PORT + "/api/get_pending_sms.php";
+String URL_CONFIRM = "http://" + SERVER_IP + ":" + SERVER_PORT + "/api/confirm_sms.php";
 
 /********************************************************************
                     GLOBAL VARIABLES

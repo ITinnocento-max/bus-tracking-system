@@ -48,3 +48,8 @@ write_index.php
 seed_admin.php
 deploy.php
 cookies.txt
+
+# Local dev tools
+esp32_simulator.php
+ngrok.zip
+*.zip

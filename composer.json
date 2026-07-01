@@ -3,7 +3,8 @@
     "description": "Smart Multi-Bus IoT Tracking & Ticketing System",
     "type": "project",
     "require": {
-        "php": ">=8.0"
+        "php": ">=8.0",
+        "ext-pdo_mysql": "*"
     },
     "scripts": {
         "post-install-cmd": [

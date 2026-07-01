@@ -6,16 +6,21 @@ services:
     plan: free
     region: oregon
     buildCommand: composer install --no-dev --optimize-autoloader
+    healthCheckPath: /api/get_buses.php
     envVars:
       - key: APP_ENV
         value: production
       - key: DB_HOST
         sync: false
+      - key: DB_PORT
+        value: "15928"
       - key: DB_NAME
         sync: false
       - key: DB_USER
         sync: false
       - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSL_CA
         sync: false
       - key: GOOGLE_MAPS_API_KEY
         sync: false

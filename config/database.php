@@ -3,8 +3,10 @@ require_once __DIR__ . '/secrets.php';
 loadSecrets();
 
 // Production error handling
-$isProduction = ($_SERVER['SERVER_NAME'] === 'bustracking.kesug.com' || (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'kesug.com') !== false))
-    || getenv('APP_ENV') === 'production';
+$isProduction = (isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME'] === 'bustracking.kesug.com')
+    || (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'kesug.com') !== false)
+    || getenv('APP_ENV') === 'production'
+    || getenv('RENDER') === 'true';
 if ($isProduction) {
     error_reporting(0);
     ini_set('display_errors', 0);
@@ -13,46 +15,68 @@ if ($isProduction) {
     ini_set('display_errors', 1);
 }
 
-// Session security
-ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_samesite', 'Strict');
+// Session security (only if session not yet started)
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.use_only_cookies', 1);
+    ini_set('session.cookie_samesite', 'Strict');
+    // Only set secure flag on HTTPS
+    if ($isProduction || (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')) {
+        ini_set('session.cookie_secure', 1);
+    }
+}
 
 class Database {
     private $host;
+    private $port;
     private $db_name;
     private $username;
     private $password;
+    private $ssl_ca;
     private $conn;
 
     public function __construct() {
         if (getenv('DB_HOST') && getenv('DB_NAME') && getenv('DB_USER')) {
             $this->host = getenv('DB_HOST');
+            $this->port = getenv('DB_PORT') ?: '3306';
             $this->db_name = getenv('DB_NAME');
             $this->username = getenv('DB_USER');
             $this->password = getenv('DB_PASSWORD') ?: '';
-        } elseif ($_SERVER['SERVER_NAME'] === 'bustracking.kesug.com' || (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'kesug.com') !== false)) {
+            $this->ssl_ca = getenv('DB_SSL_CA');
+        } elseif ((isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME'] === 'bustracking.kesug.com') || (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'kesug.com') !== false)) {
             $this->host = 'sql302.infinityfree.com';
+            $this->port = '3306';
             $this->db_name = 'if0_42236207_bustracking';
             $this->username = 'if0_42236207';
             $this->password = 'Alfred2026';
+            $this->ssl_ca = null;
         } else {
             $this->host = 'localhost';
+            $this->port = '3306';
             $this->db_name = 'bus_tracking_db';
             $this->username = 'root';
             $this->password = '';
+            $this->ssl_ca = null;
         }
     }
 
     public function connect() {
         $this->conn = null;
         try {
+            $options = [
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8",
+            ];
+            if ($this->ssl_ca) {
+                $caPath = '/tmp/aiven-ca.pem';
+                file_put_contents($caPath, $this->ssl_ca);
+                $options[PDO::MYSQL_ATTR_SSL_CA] = $caPath;
+                $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+            }
             $this->conn = new PDO(
-                "mysql:host={$this->host};dbname={$this->db_name}",
+                "mysql:host={$this->host};port={$this->port};dbname={$this->db_name}",
                 $this->username,
                 $this->password,
-                [PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8"]
+                $options
             );
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
